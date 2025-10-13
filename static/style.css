@@ -1,0 +1,27 @@
+:root {
+  --maxw: 900px;
+  --accent: #2b6cb0;
+  --muted: #666;
+}
+
+*{box-sizing:border-box}
+body{font-family:system-ui,-apple-system,Segoe UI,Roboto,"Helvetica Neue",Arial;padding:0;margin:0;color:#222;line-height:1.5}
+.container{max-width:var(--maxw);margin:0 auto;padding:20px}
+.site-header{background:#f6f8fb;border-bottom:1px solid #e6e9ef}
+.site-header .container{display:flex;align-items:center;justify-content:space-between}
+.logo a{text-decoration:none;color:var(--accent);font-weight:700}
+.site-header nav a{margin-left:16px;text-decoration:none;color:var(--muted)}
+
+.site-footer{border-top:1px solid #eee;background:#fff;padding:16px 0;margin-top:40px;text-align:center;color:#777}
+
+h2{color:var(--accent)}
+.form label{display:block;margin-bottom:12px}
+.form input[type="text"], .form input[type="email"], .form textarea{
+  width:100%;padding:10px;border:1px solid #ddd;border-radius:6px;margin-top:6px;font-size:14px
+}
+button{background:var(--accent);color:white;padding:10px 14px;border:none;border-radius:8px;cursor:pointer}
+
+.flash-container{margin-bottom:12px}
+.flash{padding:10px;border-radius:6px;margin-bottom:8px}
+.flash.success{background:#e6fffa;border:1px solid #b2f5ea}
+.flash.danger{background:#fff5f5;border:1px solid #fed7d7}
