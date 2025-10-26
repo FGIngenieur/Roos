@@ -1,0 +1,54 @@
+{% load static %}
+<!-- Bouton menu mobile -->
+    <button class="menu-toggle" id="menu-toggle">
+        <i class="icon lucide-menu"></i>
+    </button>
+
+    <!-- Sidebar -->
+    <div class="sidebar" id="sidebar">
+
+        <!-- Section Profil -->
+        <div class="profile-section">
+            <img src="{% static 'myapp/images/default.png' %}" alt="Profil utilisateur" class="profile-pic">
+            <h3>{{ user.username }}</h3>
+            <p class="role">Développeur Roos</p>
+
+        </div>
+
+       <div class="top-section">
+            <div class="search">
+                <input type="text" placeholder="Search...">
+                <i class="icon lucide-search"></i>
+            </div> 
+
+            <nav class="nav-menu">
+    <a href="{% url 'page1' %}" class="{% if request.resolver_match.url_name == 'Profil' %}active{% endif %}">
+        <i class="icon lucide-home"></i><span>Profil</span>
+    </a>
+    <a href="{% url 'page2' %}" class="{% if request.resolver_match.url_name == 'Marketplace' %}active{% endif %}">
+        <i class="icon lucide-bar-chart-3"></i><span>Marketplace</span>
+    </a>
+    <a href="{% url 'page3' %}" class="{% if request.resolver_match.url_name == 'Roos AI' %}active{% endif %}">
+        <i class="icon lucide-bell"></i><span>Roos AI</span>
+    </a>
+    <a href="{% url 'page4' %}" class="{% if request.resolver_match.url_name == 'Messagerie' %}active{% endif %}">
+        <i class="icon lucide-pie-chart"></i><span>Messagerie</span>
+    </a>
+    <a href="{% url 'page5' %}" class="{% if request.resolver_match.url_name == 'Advisoring' %}active{% endif %}">
+        <i class="icon lucide-heart"></i><span>Advisoring</span>
+    </a>
+</nav>
+
+        </div>
+
+        <div class="bottom-section">
+            <a href="{% url 'logout' %}" class="logout"><i class="icon lucide-log-out"></i><span>Logout</span></a>
+            <div class="toggle-mode">
+                <span>Light Mode</span>
+                <label class="switch">
+                    <input type="checkbox" id="theme-toggle">
+                    <span class="slider"></span>
+                </label>
+            </div>
+        </div>
+    </div>

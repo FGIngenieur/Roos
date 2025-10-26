@@ -1,0 +1,14 @@
+<script>
+        // Dark/light mode toggle
+        const toggle = document.getElementById('theme-toggle');
+        toggle.addEventListener('change', () => {
+            document.body.classList.toggle('light-mode');
+        });
+
+        // Sidebar responsive toggle
+        const menuBtn = document.getElementById('menu-toggle');
+        const sidebar = document.getElementById('sidebar');
+        menuBtn.addEventListener('click', () => {
+            sidebar.classList.toggle('open');
+        });
+    </script>
