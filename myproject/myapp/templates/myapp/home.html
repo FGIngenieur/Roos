@@ -1,0 +1,90 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Accueil - Roos</title>
+    <link rel="stylesheet" href="{% static 'myapp/css/sidebar.css' %}">
+    <link href="https://unpkg.com/lucide-static@latest/font/lucide.css" rel="stylesheet">
+
+</head>
+<body>
+    <!-- Bouton menu mobile -->
+    <button class="menu-toggle" id="menu-toggle">
+        <i class="icon lucide-menu"></i>
+    </button>
+
+    <!-- Sidebar -->
+    <div class="sidebar" id="sidebar">
+
+        <!-- Section Profil -->
+        <div class="profile-section">
+            <img src="{% static 'myapp/images/default.png' %}" alt="Profil utilisateur" class="profile-pic">
+            <h3>{{ user.username }}</h3>
+            <p class="role">Développeur Roos</p>
+            <p class="role">Développeur Roos</p>
+
+        </div>
+
+       <div class="top-section">
+            <div class="search">
+                <input type="text" placeholder="Search...">
+                <i class="icon lucide-search"></i>
+            </div> 
+
+            <nav class="nav-menu">
+    <a href="{% url 'page1' %}" class="{% if request.resolver_match.url_name == 'Profil' %}active{% endif %}">
+        <i class="icon lucide-home"></i><span>Profil</span>
+    </a>
+    <a href="{% url 'page2' %}" class="{% if request.resolver_match.url_name == 'Marketplace' %}active{% endif %}">
+        <i class="icon lucide-bar-chart-3"></i><span>Marketplace</span>
+    </a>
+    <a href="{% url 'page3' %}" class="{% if request.resolver_match.url_name == 'Roos AI' %}active{% endif %}">
+        <i class="icon lucide-bell"></i><span>Roos AI</span>
+    </a>
+    <a href="{% url 'page4' %}" class="{% if request.resolver_match.url_name == 'Messagerie' %}active{% endif %}">
+        <i class="icon lucide-pie-chart"></i><span>Messagerie</span>
+    </a>
+    <a href="{% url 'page5' %}" class="{% if request.resolver_match.url_name == 'Advisoring' %}active{% endif %}">
+        <i class="icon lucide-heart"></i><span>Advisoring</span>
+    </a>
+</nav>
+
+        </div>
+
+        <div class="bottom-section">
+            <a href="{% url 'logout' %}" class="logout"><i class="icon lucide-log-out"></i><span>Logout</span></a>
+            <div class="toggle-mode">
+                <span>Light Mode</span>
+                <label class="switch">
+                    <input type="checkbox" id="theme-toggle">
+                    <span class="slider"></span>
+                </label>
+            </div>
+        </div>
+    </div>
+
+    <!-- Contenu principal -->
+    <div class="main-content">
+        <h1>Bienvenue {{ user.username }} 🎉</h1>
+        <p>Ceci est votre tableau de bord connecté à Supabase.</p>
+    </div>
+
+    <!-- Script -->
+    <script>
+        // Dark/light mode toggle
+        const toggle = document.getElementById('theme-toggle');
+        toggle.addEventListener('change', () => {
+            document.body.classList.toggle('light-mode');
+        });
+
+        // Sidebar responsive toggle
+        const menuBtn = document.getElementById('menu-toggle');
+        const sidebar = document.getElementById('sidebar');
+        menuBtn.addEventListener('click', () => {
+            sidebar.classList.toggle('open');
+        });
+    </script>
+</body>
+</html>
