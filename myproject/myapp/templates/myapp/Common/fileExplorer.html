@@ -1,0 +1,19 @@
+  <script>
+    lucide.createIcons();
+
+    const openFileBtn = document.getElementById('openFileBtn');
+    const fileInput = document.getElementById('fileInput');
+
+    // When the button is clicked, open file explorer
+    openFileBtn.addEventListener('click', () => {
+      fileInput.click();
+    });
+
+    // Optional: show selected file name
+    fileInput.addEventListener('change', () => {
+      if (fileInput.files.length > 0) {
+        openFileBtn.innerHTML = `<i data-lucide="upload"></i> ${fileInput.files[0].name}`;
+        lucide.createIcons(); // refresh icon
+      }
+    });
+  </script>

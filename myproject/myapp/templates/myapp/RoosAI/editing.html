@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+{% load static %}
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Roos AI | Import a project</title>
+    <link rel="stylesheet" href="{% static 'myapp/css/sidebar.css' %}">
+    <link href="https://unpkg.com/lucide-static@latest/font/lucide.css" rel="stylesheet">
+</head>
+<style>
+    body {
+            height: 100vh;
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+        }
+.btn {
+  background-color: #007bff;
+  color: white;
+  padding: 10px 20px;
+  border-radius: 5px;
+  text-decoration: none;
+  display: inline-block;
+}
+.btn:hover {
+  background-color: #0056b3;
+}
+.upload-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 12px;
+      border: none;
+      background-color: #007bff;
+      color: white;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 14px;
+    }
+    input[type="file"] {
+      display: none; /* hide default file input */
+    }
+    .error-message {
+            color: red;
+            margin-top: 15px;
+            font-size: 14px;
+        }
+.upload-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 14px;
+      background-color: #007bff;
+      color: none;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      justify-content: center;
+    }
+
+    .button-container {
+  display: flex;
+  justify-content: center; /* centers horizontally */
+  gap: 12px; /* space between buttons */
+  margin-top: 20px;
+}
+
+    input[type="file"] {
+      display: none; /* hide the file input */
+    }
+
+    pre {
+      background: #f9f9f9;
+      padding: 10px;
+      border-radius: 5px;
+      white-space: pre-wrap;
+    }
+  </style>
+</style>
+<body>
+    {% include '../Common/menu.html' %}
+    <!-- Contenu principal -->
+     <div class="main-content">
+        <h1>Importer votre projet</h1>
+        <br>
+        <br>
+
+ <form id="uploadForm" method="post" enctype="multipart/form-data">
+    {% csrf_token %}
+    <!-- Hidden input -->
+    <input type="file" name="file" id="fileInput" accept=".txt">
+    <div class="button-container">
+    <!-- Visible button -->
+    <button type="button" class="upload-btn" id="openFileBtn">
+      <i data-lucide="upload"></i> Sélectionner un fichier
+    </button>
+
+    <!-- Submit button -->
+    <button type="submit" class="upload-btn" style="background-color: rgb(0, 128, 117);">
+      <i data-lucide="check"></i> Téléverser le projet
+    </button>
+    </div>
+  </form>
+
+  <!--
+  {% if text %}
+    <h3>File contents:</h3>
+    <pre>{{ text }}</pre>
+  {% endif %}-->
+    <!-- Script -->
+     {% include 'myapp/Common/changeTheme.html' %}
+     {% include 'myapp/Common/fileExplorer.html' %}
+</body>
+</html>

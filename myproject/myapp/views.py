@@ -24,6 +24,21 @@ def login_view(request):
     # Requête GET → on affiche le formulaire
     return render(request, 'myapp/login.html')
 
+def roos_ai(request, tab = 'main'):
+    if tab == 'main':
+        return render(request, f'myapp/RoosAI/{tab}.html')
+    elif tab == 'editing':
+        text = None
+        if request.method == 'POST' and 'file' in request.FILES:
+            uploaded_file = request.FILES['file']
+            text = uploaded_file.read().decode('utf-8')  # Read file content as text
+
+            if uploaded_file.size > 2 * 1024 * 1024:
+                return render(request, 'myapp/RoosAI/editing.html', {'text': 'File too large!'})
+            if not (uploaded_file.name.endswith('.csv') or uploaded_file.name.endswith('.xlsx')):
+                return render(request, 'myapp/RoosAI/editing.html', {'text': 'Only .csv and .xlsx files allowed!'})
+        return render(request, 'myapp/RoosAI/editing.html', {'text': text})
+
 def page1(request):
     return render(request, 'myapp/page1.html')
 

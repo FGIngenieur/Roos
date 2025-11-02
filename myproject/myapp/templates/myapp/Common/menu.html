@@ -1,7 +1,21 @@
 {% load static %}
+<style>
+.search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.search input {
+  padding: 6px 10px;
+  font-size: 14px;
+}
+</style>
+<!-- Include Lucide -->
+<script src="https://unpkg.com/lucide@latest"></script>
 <!-- Bouton menu mobile -->
     <button class="menu-toggle" id="menu-toggle">
-        <i class="icon lucide-menu"></i>
+        <i data-lucide="menu"></i>
     </button>
 
     <!-- Sidebar -->
@@ -17,32 +31,31 @@
 
        <div class="top-section">
             <div class="search">
-                <input type="text" placeholder="Search...">
-                <i class="icon lucide-search"></i>
+                <input type="text" placeholder="Search..."><i data-lucide="search" style="width: 20px;"></i>
             </div> 
 
             <nav class="nav-menu">
     <a href="{% url 'page1' %}" class="{% if request.resolver_match.url_name == 'Profil' %}active{% endif %}">
-        <i class="icon lucide-home"></i><span>Profil</span>
+        <i data-lucide="home"></i><span>Profil</span>
     </a>
     <a href="{% url 'page2' %}" class="{% if request.resolver_match.url_name == 'Marketplace' %}active{% endif %}">
-        <i class="icon lucide-bar-chart-3"></i><span>Marketplace</span>
+        <i data-lucide="bar-chart-3"></i><span>Marketplace</span>
     </a>
-    <a href="{% url 'page3' %}" class="{% if request.resolver_match.url_name == 'Roos AI' %}active{% endif %}">
-        <i class="icon lucide-bell"></i><span>Roos AI</span>
+    <a href="{% url 'roosAIMain' %}" class="{% if request.resolver_match.url_name == 'Roos AI' %}active{% endif %}">
+        <i data-lucide="pie-chart"></i><span>Roos AI</span>
     </a>
     <a href="{% url 'page4' %}" class="{% if request.resolver_match.url_name == 'Messagerie' %}active{% endif %}">
-        <i class="icon lucide-pie-chart"></i><span>Messagerie</span>
+        <i data-lucide="bell"></i><span>Messagerie</span>
     </a>
     <a href="{% url 'page5' %}" class="{% if request.resolver_match.url_name == 'Advisoring' %}active{% endif %}">
-        <i class="icon lucide-heart"></i><span>Advisoring</span>
+        <i data-lucide="heart"></i><span>Advisoring</span>
     </a>
 </nav>
 
         </div>
 
         <div class="bottom-section">
-            <a href="{% url 'logout' %}" class="logout"><i class="icon lucide-log-out"></i><span>Logout</span></a>
+            <a href="{% url 'logout' %}" class="logout"><i data-lucide="log-out"></i><span>Logout</span></a>
             <div class="toggle-mode">
                 <span>Light Mode</span>
                 <label class="switch">
@@ -52,3 +65,8 @@
             </div>
         </div>
     </div>
+
+<!-- Activate icons -->
+<script>
+  lucide.createIcons();
+</script>
