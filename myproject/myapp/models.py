@@ -7,3 +7,7 @@ class Profile(models.Model):
 
     def __str__(self):
         return self.user.username
+
+class Document(models.Model):
+    title = models.CharField(max_length=255)
+    file = models.FileField(upload_to="docs/")

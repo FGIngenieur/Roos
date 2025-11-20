@@ -12,10 +12,19 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 
 from pathlib import Path
 import os
+import environ
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+env = environ.Env()
+environ.Env.read_env(os.path.join(BASE_DIR, '.env'))
+
+env_path = os.path.join(BASE_DIR, ".env")
+if os.path.exists(env_path):
+    environ.Env.read_env(env_path)
+else:
+    print(f"⚠️  Warning: .env file not found at {env_path}")
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
@@ -80,11 +89,12 @@ WSGI_APPLICATION = 'myproject.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'postgres',  # ou le nom indiqué dans ton Supabase Dashboard
-        'USER': 'postgres.wvjvqqcstzfnbbgtisvh',  # ou ton nom d'utilisateur Supabase
-        'PASSWORD': 'pri4LpHXnRE8yhnX??KQABs7x',
-        'HOST': 'aws-1-us-east-2.pooler.supabase.com',  # ton host Supabase
-        'PORT': '6543',  # ou 5432 selon ton projet
+        'NAME': env('DB_NAME'),  # ou le nom indiqué dans ton Supabase Dashboard
+        'USER': env('DB_USER'),  # ou ton nom d'utilisateur Supabase
+        'PASSWORD': env('DB_PASSWORD'),
+        'HOST': env('DB_HOST'),  # ton host Supabase
+        'PORT': env('DB_PORT'),  # ou 5432 selon ton projet
+        'OPTIONS': {'sslmode': 'require'},
     }
 }
 
@@ -106,6 +116,14 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
+USER_ID = env("USER_ID")
+DEV_FLAG = env("DEV_FLAG")
+SUPABASE_URL = env("SUPABASE_URL")
+SUPABASE_KEY = env("SUPABASE_KEY")
+SUPABASE_STORAGE_BUCKET = env("SUPABASE_STORAGE_BUCKET", default="dev-kev")
+SUPABASE_STORAGE_PUBLIC = env.bool("SUPABASE_STORAGE_PUBLIC", default=True)
+
+DEFAULT_FILE_STORAGE = "utils.backends.supabase_storage.SupabaseStorage"
 
 # Internationalization
 # https://docs.djangoproject.com/en/5.2/topics/i18n/
