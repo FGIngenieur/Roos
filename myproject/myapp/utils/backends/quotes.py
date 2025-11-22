@@ -4,6 +4,7 @@ os.chdir('../libs/')
 from quotesLibs import *
 os.chdir(cwd)
 from quotationEngine import *
+from dataLoader import *
 
 class QuoteProject:
     """
@@ -17,7 +18,7 @@ class QuoteProject:
                 project_name : str,
                 project_type : Optional[Literal["estimate", "quote"]],
                 _project_id : int,
-                _project_data : pd.DataFrame
+                _project_input_data : pd.DataFrame
                 ) -> None:
         """
         Initialize the class.
@@ -34,7 +35,7 @@ class QuoteProject:
 
         self._project_type = project_type
         self._project_id = __generate_id()
-        self._project_data = None
+        self._project_input_data = None
         
         # Optional: validate inputs
         self._validate()
@@ -149,7 +150,7 @@ class QuoteProject:
     
     def readFile(self, file_path : str) -> None:
         """
-            Description. Creates the _project_data attributes based on a file
+            Description. Creates the _project_input_data attributes based on a file
         """
         has_correct_extension = file_path.endswith('.csv') or file_path.endswith('.xlsx')
         has_pdf_extension = file_path.endswith('.pdf')
@@ -179,7 +180,7 @@ class QuoteProject:
             if file_path.endswith('.csv'):
                 data = pd.read_csv(file_path)
             data = data.rename(columns = {col : col.strip().lower().replace(' ', '_')})
-            self._project_data = data
+            self._project_input_data = data
 
     @staticmethod
     def helper_function(x, y):
