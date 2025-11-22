@@ -57,7 +57,7 @@ class QuoteProject:
         max_evals = int(1e4)
         count = 0
 
-        file_path = ".identifiers.txt"
+        file_path = ".quotesIdentifiers.txt"
 
         # Read existing numbers
         try:
