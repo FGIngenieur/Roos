@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+{% load static %}
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Roos AI | Home</title>
+    <link rel="stylesheet" href="{% static 'myapp/css/sidebar.css' %}">
+    <link href="https://unpkg.com/lucide-static@latest/font/lucide.css" rel="stylesheet">
+</head>
+<style>
+.btn {
+  background-color: #007bff;
+  color: white;
+  padding: 10px 20px;
+  border-radius: 5px;
+  text-decoration: none;
+  display: inline-block;
+}
+.btn:hover {
+  background-color: #0056b3;
+}
+</style>
+<body>
+{% include '../Common/menu.html' %}
+    <!-- Contenu principal -->
+     <div class="main-content">
+        <h1>Accueil</h1>
+        <br>
+        <p>Vous pouvez gérer votre IA de création de devis depuis cet espace.</p>
+        <br>
+        <h2>Onglets favoris</h2>
+        <br>
+        <a href="../editing" class="btn">Edit or create a quote</a>
+        <br>
+        <br>
+        <a href="../search" class="btn">Settings</a>
+        <br>
+    </div>
+    <!-- Script -->
+     {% include 'myapp/Common/changeTheme.html' %}
+</body>
+</html>

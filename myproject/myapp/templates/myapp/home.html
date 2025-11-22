@@ -1,0 +1,23 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Accueil - Roos</title>
+    <link rel="stylesheet" href="{% static 'myapp/css/sidebar.css' %}">
+    <link href="https://unpkg.com/lucide-static@latest/font/lucide.css" rel="stylesheet">
+
+</head>
+<body>
+    {% include 'myapp/Common/menu.html' %}
+    <!-- Contenu principal -->
+    <div class="main-content">
+        <h1>Bienvenue {{ user.username }} 🎉</h1>
+        <p>Ceci est votre tableau de bord connecté à Supabase.</p>
+    </div>
+
+    <!-- Script -->
+     {% include 'myapp/Common/changeTheme.html' %}
+</body>
+</html>
