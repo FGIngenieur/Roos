@@ -64,7 +64,7 @@ import os
 
 from dataLoader import *
 
-pdf_path = f'./test.pdf'
+pdf_path = f'./quote_dummy(1).pdf'
 COL_RANGES = {
     "description": (0, 240),
     "qty": (240, 330),
@@ -72,6 +72,6 @@ COL_RANGES = {
     "total": (430, 600)
 }
 
-data_loader = DataLoader(filepath = pdf_path, columns = COL_RANGES, method="Custom")
-data_loader.saveToCSV('test.csv')
+data_loader = DataLoader(filepath = pdf_path, columns = COL_RANGES, method="Plumber")
+data_loader.saveToCSV('quotedummy.csv')
 print(data_loader.getPandas())
