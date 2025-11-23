@@ -22,10 +22,11 @@ class DataLoader:
         _filecsv (str): internal CSV path after conversion
     """
 
-    def __init__(self, filepath: str, columns: dict, sheet_name: str = None):
+    def __init__(self, filepath: str, columns: dict, sheet_name: str = None, method : Literal["OCR", "Plumber", "Custom"] = "Plumber"):
         self.filepath = filepath
         self.columns = columns
         self.sheet_name = sheet_name
+        self.method = method
         self._filecsv = None
 
         self._initialize_csv()
@@ -246,17 +247,17 @@ class DataLoader:
 
         return items
 
-    def _handle_pdf(self, method : Literal["OCR", "Plumber", "Custom"] = "OCR"):
+    def _handle_pdf(self):
         """
         Entire PDF → CSV pipeline.
         Returns path to generated CSV file.
         """
         temp_csv = self.filepath + ".converted.csv"
 
-        if method == "OCR":
+        if self.method == "OCR":
             return self._pdf_to_csv_with_ocr(self.filepath, temp_csv)
         
-        elif method == "Plumber":
+        elif self.method == "Plumber":
             return self._pdf_to_csv_with_table_extraction(self.filepath, temp_csv)
         
         else:
