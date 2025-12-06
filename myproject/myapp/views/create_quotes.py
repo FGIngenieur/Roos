@@ -18,6 +18,9 @@ import io
 import pdfplumber
 from django.core.files.uploadedfile import UploadedFile
 
+bucket = "dev-kev"
+quote_input_folder = "quotesImported"
+quote_output_folder = "quotesCreated"
 
 def import_home(request):
     return render(request, "myapp/RoosAI/import_home.html")
@@ -25,7 +28,7 @@ def import_home(request):
 def blank_page(request):
     df = pd.DataFrame()
     request.session["input_data"] = df.to_json(orient="records")
-    return redirect("myapp/RoosAI/editor-page")
+    return redirect("editor-page")
 
 def import_from_pc(request):
     if request.method == "POST":
@@ -44,9 +47,9 @@ def import_from_pc(request):
             return render(request, "error.html", {"msg": "Unsupported file type"})
 
         request.session["input_data"] = df.to_json(orient="records")
-        return redirect("myapp/RoosAI/editor-page")
+        return redirect("editor-page")
 
-    return redirect("myapp/RoosAI/import-home")
+    return redirect("import-home")
 
 
 def platform_list(request):
@@ -61,7 +64,7 @@ from django.http import HttpResponse
 def import_from_platform(request, item_id):
     supabase = create_client(settings.SUPABASE_URL, settings.SUPABASE_KEY)
     row = supabase.table("quotesTable").select("*").eq("id", item_id).single().execute().data
-    file_bytes = supabase.storage.from_(row["bucket"]).download(row["file_path"])
+    file_bytes = supabase.storage.from_(row[bucket]).download(row["file_path"])
 
     name = row["file_name"].lower()
 

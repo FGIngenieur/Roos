@@ -1,10 +1,26 @@
 <!DOCTYPE html>
-<html>
+{% load static %}
+<html lang="fr">
 <head>
     <title>{% block title %}Importer{% endblock %}</title>
     <script src="https://unpkg.com/htmx.org"></script>
     <script src="https://unpkg.com/hyperscript.org"></script>
-
+    <link rel="stylesheet" href="{% static 'myapp/css/sidebar.css' %}">
+    <link href="https://unpkg.com/lucide-static@latest/font/lucide.css" rel="stylesheet">
+<style>
+.btn {
+  background-color: #007bff;
+  color: white;
+  padding: 10px 20px;
+  border-radius: 5px;
+  text-decoration: none;
+  display: inline-block;
+}
+.btn:hover {
+  background-color: #0056b3;
+}
+</style>
+<body>
     {% include 'myapp/Common/menu.html' %}
 
     <style>

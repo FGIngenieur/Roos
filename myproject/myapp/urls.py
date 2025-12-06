@@ -1,5 +1,6 @@
 from django.urls import path
 from . import views
+from .views import create_quotes
 from functools import partial
 
 urlpatterns = [
@@ -16,10 +17,10 @@ urlpatterns = [
     path('RoosAI/exploreQuotes/', views.navigation.list_files, name="list_files"),
     path("RoosAI/search/", views.navigation.quotes_list, name="quotes_list"),
     path("RoosAI/search/<int:quote_id>/", views.navigation.quote_detail, name="quote_detail"),
-    path("RoosAI/import_home/", views.create_quotes.import_home, name="import-home"),
-    path("RoosAI/upload/", views.create_quotes.import_from_pc, name="import-from-pc"),
-    path("RoosAI/platform/", views.create_quotes.platform_list, name="platform-list"),
-    path("RoosAI/platform/import/<int:item_id>/", views.create_quotes.import_from_platform, name="import-from-platform"),
-    path("RoosAI/blank/", views.create_quotes.blank_page, name="blank-page"),
-    path("RoosAI/ editor/", views.create_quotes.editor_page, name="editor-page"),
+    path("RoosAI/import_home/", create_quotes.import_home, name="import-home"),
+    path("RoosAI/upload/", create_quotes.import_from_pc, name="import-from-pc"),
+    path("RoosAI/platform/", create_quotes.platform_list, name="platform-list"),
+    path("RoosAI/platform/import/<int:item_id>/", create_quotes.import_from_platform, name="import-from-platform"),
+    path("RoosAI/blank/", create_quotes.blank_page, name="blank-page"),
+    path("RoosAI/editor/", create_quotes.editor_page, name="editor-page"),
 ]
