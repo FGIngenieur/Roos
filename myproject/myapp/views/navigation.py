@@ -1,9 +1,30 @@
-from .conf import *
+from django.shortcuts import render, redirect
+from django.contrib.auth import authenticate, login, logout
+from django.contrib.auth.decorators import login_required
+from django.http import FileResponse, HttpResponseForbidden, HttpResponse
+from django.contrib.auth.decorators import login_required
+from django.http import JsonResponse
+from supabase import create_client
+from django.conf import settings
+from django.utils import timezone
+from io import BytesIO
+import os
+#import backends
+#from backends import (
+#    quotes, quoteMapping, quotationEngine, quoteClustering, dataLoader
+#)
+import pandas as pd
+import io
+import pdfplumber
+from django.core.files.uploadedfile import UploadedFile
 
 if settings.DEV_FLAG:
     user_id = int(settings.USER_ID)
     project_id = 2
     client_id = 1
+    engine_id = 'e6a5c796-fba6-4559-9ff3-d9ba340509fe'
+
+CACHE_FOLDER_PATH = str(os.path.join(settings.BACKEND_DIR, 'cache'))
 
 # 🏠 Page d'accueil (accessible uniquement si connecté)
 @login_required(login_url='/login/')
@@ -57,6 +78,57 @@ def record_file_upload(file_name : str,
         print("Error recording file:", e)
         return False
 
+def record_project(project_name : str,
+  client,
+engine_id,
+  table = "projectsTable",
+  bucket="dev-kev",
+  user_id = user_id,
+  client_id = client_id):
+    
+    try:
+        response = client.table(table).insert({
+            "project_name": project_name,
+            "bucket"  : bucket,
+            "client_id" : client_id,
+            "engine_id" : engine_id,
+            "author_id" : user_id
+        }).execute()
+        print(response.status_code, response.data)
+        # Check status
+        if response.status_code != 201:
+            print("Insert failed:", response.data)
+            return False
+        
+        print("File recorded successfully:", response.data)
+        return True
+    except Exception as e:
+        print("Error recording file:", e)
+        return False
+
+def record_engine (
+        engine_name : str,
+        client,
+        table = "engineTable",
+        project_table = "projectsTable",
+        bucket="dev-kev"
+  ):
+    try:
+        response = client.table(table).insert({
+            "file_path": 'clientModels/' + engine_name,
+            "bucket"  : bucket,
+        }).execute()
+        print(response.status_code, response.data)
+        # Check status
+        if response.status_code != 201:
+            print("Insert failed:", response.data)
+            return False
+        
+        print("File recorded successfully:", response.data)
+        return True
+    except Exception as e:
+        print("Error recording file:", e)
+        return False
 
 def list_files(request, table = "quotesTable", user_id = user_id):
     try:
@@ -86,7 +158,7 @@ def quotes_list(request, tab, client, user_id = user_id):
     return render(request, f"myapp/RoosAI/{tab}.html", {"quotes": quotes})
 
 def quote_detail(request, quote_id, client, user_id):
-    res = client.table("quotes").select("*").eq("id", quote_id).single().execute()
+    res = client.table("quote_items").select("*").eq("quote_id", quote_id).single().execute()
     quote = res.data
     return render(request, f"myapp/RoosAI/quote_detail.html", {"quote": quote})
 
@@ -97,7 +169,6 @@ def roos_ai(request, tab = 'main'):
         return render(request, f'myapp/RoosAI/{tab}.html')
     elif tab == 'editing':
         text = None
-        print(request.FILES)
         if request.method == 'POST' and 'importFile' in request.FILES:
             uploaded_file = request.FILES['importFile']
 
@@ -130,6 +201,15 @@ def roos_ai(request, tab = 'main'):
     elif tab == 'search':
         supabase = create_client(settings.SUPABASE_URL, settings.SUPABASE_KEY)
         quotes_list(request, tab, supabase)
+    
+    elif tab == 'create-project':
+        if request.method == 'POST':
+            supabase = create_client(settings.SUPABASE_URL, settings.SUPABASE_KEY)
+            project_name = request.POST.get('project_name')
+            bucket = settings.SUPABASE_STORAGE_BUCKET
+            record_project(project_name, supabase, bucket=bucket,engine_id=engine_id)
+            return render(request, )
+
         
 
 

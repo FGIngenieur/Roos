@@ -16,6 +16,7 @@ import environ
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+BACKEND_DIR = os.path.join(BASE_DIR, 'myapp/utils/backends')
 
 env = environ.Env()
 environ.Env.read_env(os.path.join(BASE_DIR, '.env'))

@@ -1,8 +1,64 @@
-import os
-cwd = os.getcwd()
-os.chdir('../libs/')
-from quotesLibs import *
-os.chdir(cwd)
+#---------------------------------------------------------------------------
+#   Title : _Quotation Section Libraries_
+#---------------------------------------------------------------------------
+
+import subprocess
+
+try:
+    from typing import (
+        Literal, Optional, Tuple, Dict, List
+    )
+except ImportError:
+    subprocess.call(["pip3", "install", "typing"])
+    from typing import (
+        Literal, Optional, Tuple, Dict, List
+    )
+try:
+    import pdfplumber
+except ImportError:
+    subprocess.call(["pip3", "install", "pdfplumber"])
+    import pdfplumber
+
+try:
+    import csv
+except ImportError:
+    subprocess.call(["pip3", "install", "csv"])
+    import csv
+
+try:
+    import re
+except ImportError:
+    subprocess.call(["pip3", "install", "re"])
+    import re
+
+import pandas as pd
+import numpy as np
+from pathlib import Path
+
+try:
+    from sentence_transformers import SentenceTransformer, util
+except ImportError:
+    subprocess.call(["pip3", "install", "sentence_transformers"])
+    from sentence_transformers import SentenceTransformer, util
+
+try:
+    import torch
+except ImportError:
+    subprocess.call(["pip3", "install", "torch"])
+    import torch
+
+try:
+    import json
+except ImportError:
+    subprocess.call(["pip3", "install", "json"])
+    import json
+
+try:
+    from sklearn.metrics import silhouette_score, calinski_harabasz_score, davies_bouldin_score
+except ImportError:
+    subprocess.call(["pip3", "install", "scikit-learn"])
+    from sklearn.metrics import silhouette_score, calinski_harabasz_score, davies_bouldin_score
+
 from quotationEngine import *
 from dataLoader import *
 
@@ -16,9 +72,11 @@ class QuoteProject:
     def __init__(
                 self,
                 project_name : str,
+                client_id : int,
                 project_type : Optional[Literal["estimate", "quote"]],
-                _project_id : int,
-                _project_input_data : pd.DataFrame
+                project_id : int,
+                _project_input_data : pd.DataFrame,
+                _quote_engine: QuoteEngine
                 ) -> None:
         """
         Initialize the class.
@@ -34,8 +92,9 @@ class QuoteProject:
             project_type = "quote"
 
         self._project_type = project_type
-        self._project_id = __generate_id()
+        self._project_id = project_id
         self._project_input_data = None
+        self._quote_engine = QuoteEngine(client_id=self.client_id, project_id=self._project_id)
         
         # Optional: validate inputs
         self._validate()
@@ -122,73 +181,26 @@ class QuoteProject:
 
         return res
 
-
-
     @property
     def getName(self):
         """Getter for param1."""
         return self._project_name
 
-    @project_name.setter
     def setProjectName(self, value):
         """Setter for param1 with optional validation."""
         self._project_name = value
         self._validate()
 
-    def method(self, arg):
-        """
-        Example of a regular method.
-
-        Args:
-            arg (type): Description of the argument.
-
-        Returns:
-            type: Description of the return value.
-        """
-        # Do something with arg and instance variables
-        return f"Processing {arg} with {self.param1}"
+    def create_model(self) -> None:
+        if self._project_input_data == None:
+            raise Exception("A dataset should be added to the project first")
+        self._quote_engine.init_engine(self._project_input_data)
     
     def readFile(self, file_path : str) -> None:
-        """
-            Description. Creates the _project_input_data attributes based on a file
-        """
-        has_correct_extension = file_path.endswith('.csv') or file_path.endswith('.xlsx')
-        has_pdf_extension = file_path.endswith('.pdf')
+        loader = DataLoader(filepath = str(file_path))
+        self._project_input_data = loader.getPandas()
 
-        if has_pdf_extension:
-            pdf_path = file_path
-            csv_path = file_path[:file_path.index('.pdf')] + ".csv"
-
-            with pdfplumber.open(pdf_path) as pdf:
-                page = pdf.pages[0]
-
-                # pdfplumber often detects multiple partial tables, so we combine them
-                tables = page.extract_tables()
-
-                # Flattening all extracted tables into one
-                cleaned_rows = []
-                for tbl in tables:
-                    for row in tbl:
-                        cleaned_rows.append([cell.strip() if cell else "" for cell in row])
-
-            # Write CSV
-            with open(csv_path, "w", newline="", encoding="utf-8") as f:
-                writer = csv.writer(f)
-                writer.writerows(cleaned_rows)
-
-        if has_correct_extension:
-            if file_path.endswith('.csv'):
-                data = pd.read_csv(file_path)
-            data = data.rename(columns = {col : col.strip().lower().replace(' ', '_')})
-            self._project_input_data = data
-
-    @staticmethod
-    def helper_function(x, y):
-        """
-        Example static utility method.
-        """
-        return x + y
 
     def __repr__(self):
         """Unambiguous string representation."""
-        return f"QuoteProject <{_project_id}>"
+        return f"QuoteProject <{self._project_id}>"

@@ -1,0 +1,18 @@
+<h2>Select a file to import</h2>
+
+<table border="1">
+    <tr>
+        <th>File Name</th>
+        <th>Created</th>
+        <th>Action</th>
+    </tr>
+    {% for i in items %}
+    <tr>
+        <td>{{ i.file_name }}</td>
+        <td>{{ i.created_at }}</td>
+        <td>
+            <a href="{% url 'import-from-platform' i.id %}">Import</a>
+        </td>
+    </tr>
+    {% endfor %}
+</table>

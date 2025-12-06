@@ -8,7 +8,7 @@ import os
 import json
 import pickle
 from pathlib import Path
-from typing import List, Tuple, Dict, Optional, Any
+from typing import Any, Dict, List, Optional, Tuple, Literal
 
 import numpy as np
 import torch
@@ -19,17 +19,16 @@ from sklearn.metrics import silhouette_score
 
 class SemanticClusterizer:
     """
-    Clean, opinionated SemanticClusterizer.
+    Clean, opinionated SemanticClusterizer with quartile-based brand-level regression.
 
-    Key features:
-    - GPU-accelerated batch embeddings (SentenceTransformer)
-    - Train from list of (sentence, numeric_target) pairs
-    - Threshold-based greedy clustering OR DBSCAN (automatic cluster count)
-    - Automatic threshold search (silhouette)
-    - Incremental centroid updates, cluster merge + split heuristics
-    - Weighted-KNN prediction *inside* the chosen cluster (cosine distance weight)
-    - Batch prediction
-    - Save / load model (metadata + clusters + centroids + dataset)
+    New:
+    - brand_level parameter in prediction ("market", "low", "medium", "high")
+    - per-cluster quartile groups precomputed after training:
+         * low    → lowest quartile
+         * medium → Q1–Q3
+         * high   → highest quartile
+         * market → all points
+    - If fewer than 4 members in a cluster → market fallback automatically
     """
 
     def __init__(
@@ -46,21 +45,24 @@ class SemanticClusterizer:
         self.model_name = model_name
         self.model = SentenceTransformer(model_name, device=device)
 
-        # dataset storage
+        # dataset
         self.target_name = target_name
         self.sentences: List[str] = []
         self.targets: np.ndarray = np.array([], dtype=float)
 
-        # cluster representation (indices into self.sentences)
+        # cluster structure
         self.clusters: List[List[int]] = []
         self.centroids: List[torch.Tensor] = []
+
+        # per-cluster quartile groups
+        self.quartile_groups: List[Dict[str, List[int]]] = []
 
         # metadata
         self.method: Optional[str] = None
         self.threshold: Optional[float] = None
 
-        # caches
-        self._embeddings_cache: Optional[torch.Tensor] = None  # tensor on self.device
+        # cache
+        self._embeddings_cache: Optional[torch.Tensor] = None
 
     # -------------------------
     # Embedding helpers
@@ -71,12 +73,7 @@ class SemanticClusterizer:
         batch_size: int = 64,
         convert_to_tensor: bool = True,
     ) -> torch.Tensor:
-        """
-        Wrapper around SentenceTransformer.encode, compatible with all models.
-        Returns a tensor located on the configured device.
-        """
         if not sentences:
-            # return empty tensor of shape (0, dim)
             dim = self.model.get_sentence_embedding_dimension()
             return torch.empty((0, dim), device=self.device)
 
@@ -90,9 +87,6 @@ class SemanticClusterizer:
         return emb
 
     def _ensure_embeddings_cache(self, batch_size: int = 64) -> torch.Tensor:
-        """
-        Compute and cache embeddings for self.sentences if not present.
-        """
         if self._embeddings_cache is None:
             if not self.sentences:
                 dim = self.model.get_sentence_embedding_dimension()
@@ -102,22 +96,17 @@ class SemanticClusterizer:
         return self._embeddings_cache
 
     # -------------------------
-    # Dataset management
+    # Dataset
     # -------------------------
     def add_pairs(self, pairs: List[Tuple[str, float]]) -> None:
-        """
-        Append (sentence, numeric_target) pairs to the dataset.
-        Call train(...) to recompute clusters.
-        """
         if not pairs:
             return
         sents, targs = zip(*pairs)
         self.sentences.extend(sents)
         if self.targets.size == 0:
-            self.targets = np.array(list(targs), dtype=float)
+            self.targets = np.array(targs, dtype=float)
         else:
-            self.targets = np.concatenate([self.targets, np.array(list(targs), dtype=float)])
-        # clear embedding cache (will be recomputed on next train/predict)
+            self.targets = np.concatenate([self.targets, np.array(targs, dtype=float)])
         self._embeddings_cache = None
 
     # -------------------------
@@ -129,14 +118,9 @@ class SemanticClusterizer:
         threshold: float,
         batch_size: int = 64,
     ) -> Tuple[List[List[int]], List[torch.Tensor]]:
-        """
-        Greedy clustering: iterate sentences, assign to first centroid with sim >= threshold,
-        otherwise create a new cluster.
-        Returns clusters (lists of indices) and centroids (tensor list).
-        """
-        embs = self._embed(sentences, batch_size=batch_size)  # tensor
-        clusters: List[List[int]] = []
-        centroids: List[torch.Tensor] = []
+        embs = self._embed(sentences, batch_size=batch_size)
+        clusters = []
+        centroids = []
 
         for i, emb in enumerate(embs):
             assigned = False
@@ -144,7 +128,6 @@ class SemanticClusterizer:
                 sim = util.cos_sim(emb, cent).item()
                 if sim >= threshold:
                     clusters[cid].append(i)
-                    # incremental centroid update
                     n = len(clusters[cid])
                     centroids[cid] = (cent * (n - 1) + emb) / n
                     assigned = True
@@ -160,18 +143,16 @@ class SemanticClusterizer:
         eps: float = 0.35,
         batch_size: int = 64,
     ) -> Tuple[List[List[int]], List[torch.Tensor]]:
-        """
-        DBSCAN clustering in embedding space using cosine metric (via sklearn).
-        """
         embs = self._embed(sentences, batch_size=batch_size).cpu().numpy()
         db = DBSCAN(eps=eps, min_samples=1, metric="cosine").fit(embs)
         labels = db.labels_
+
         clusters_map: Dict[int, List[int]] = {}
         for idx, lab in enumerate(labels):
             clusters_map.setdefault(int(lab), []).append(idx)
-        clusters = list(clusters_map.values())
 
-        centroids: List[torch.Tensor] = []
+        clusters = list(clusters_map.values())
+        centroids = []
         for c in clusters:
             c_embs = torch.tensor(embs[c], device=self.device)
             centroids.append(c_embs.mean(dim=0))
@@ -187,40 +168,39 @@ class SemanticClusterizer:
         steps: int = 9,
         batch_size: int = 64,
     ) -> float:
-        """
-        Try multiple thresholds and pick the one with best silhouette score.
-        Returns chosen threshold (defaults to 0.75 if no good threshold found).
-        """
         if len(self.sentences) < 2:
             return 0.75
+
         embs = self._ensure_embeddings_cache(batch_size=batch_size).cpu().numpy()
         best_thr = 0.75
         best_score = -1.0
+
         for thr in np.linspace(min_thr, max_thr, steps):
             clusters, _ = self._cluster_threshold(self.sentences, threshold=thr, batch_size=batch_size)
-            # convert clusters to label array
+
             labels = np.empty(len(self.sentences), dtype=int)
-            for lab_idx, cluster in enumerate(clusters):
-                for idx in cluster:
+            for lab_idx, c in enumerate(clusters):
+                for idx in c:
                     labels[idx] = lab_idx
+
             if len(set(labels)) < 2:
                 continue
+
             try:
                 score = silhouette_score(embs, labels, metric="cosine")
             except Exception:
                 score = -1.0
+
             if score > best_score:
                 best_score = score
                 best_thr = float(thr)
+
         return best_thr
 
     # -------------------------
     # Merge / Split clusters
     # -------------------------
     def _merge_clusters(self, merge_threshold: float = 0.80) -> None:
-        """
-        Merge clusters whose centroids have cosine similarity >= merge_threshold.
-        """
         merged = True
         while merged:
             merged = False
@@ -231,13 +211,10 @@ class SemanticClusterizer:
                         continue
                     sim = util.cos_sim(self.centroids[i], self.centroids[j]).item()
                     if sim >= merge_threshold:
-                        # merge j into i
                         self.clusters[i].extend(self.clusters[j])
-                        # recompute centroid from all members
                         idxs = self.clusters[i]
                         embs = self._ensure_embeddings_cache()[idxs]
                         self.centroids[i] = embs.mean(dim=0)
-                        # remove j
                         del self.clusters[j]
                         del self.centroids[j]
                         merged = True
@@ -246,34 +223,68 @@ class SemanticClusterizer:
                     break
 
     def _split_clusters(self, split_threshold: float = 0.45, batch_size: int = 64) -> None:
-        """
-        Split clusters that have low average similarity to their centroid.
-        Current fallback: split into singletons when below threshold.
-        """
-        new_clusters: List[List[int]] = []
-        new_centroids: List[torch.Tensor] = []
+        new_clusters = []
+        new_centroids = []
+
         for idx, cluster in enumerate(self.clusters):
             if len(cluster) <= 1:
                 new_clusters.append(cluster)
                 new_centroids.append(self.centroids[idx])
                 continue
+
             embs = self._ensure_embeddings_cache(batch_size=batch_size)[cluster]
             centroid = self.centroids[idx]
             sims = util.cos_sim(embs, centroid).cpu().numpy().flatten()
             avg_sim = float(np.mean(sims))
+
             if avg_sim >= split_threshold:
                 new_clusters.append(cluster)
                 new_centroids.append(centroid)
             else:
-                # fallback: split into singletons
                 for i in cluster:
                     new_clusters.append([i])
-                    new_centroids.append(self._ensure_embeddings_cache(batch_size=batch_size)[i])
+                    new_centroids.append(self._ensure_embeddings_cache()[i])
+
         self.clusters = new_clusters
         self.centroids = new_centroids
 
     # -------------------------
-    # Train / Retrain
+    # Quartile computation
+    # -------------------------
+    def _compute_quartile_groups_for_cluster(self, member_idxs: List[int]) -> Dict[str, List[int]]:
+        if len(member_idxs) < 4:
+            return {
+                "market": member_idxs,
+                "low": member_idxs,
+                "medium": member_idxs,
+                "high": member_idxs,
+            }
+
+        values = self.targets[np.array(member_idxs)]
+        q1 = np.percentile(values, 25)
+        q3 = np.percentile(values, 75)
+
+        low = [i for i in member_idxs if self.targets[i] <= q1]
+        high = [i for i in member_idxs if self.targets[i] >= q3]
+        medium = [i for i in member_idxs if q1 < self.targets[i] < q3]
+
+        # ensure non-empty (safety fallback)
+        if not low:
+            low = member_idxs
+        if not medium:
+            medium = member_idxs
+        if not high:
+            high = member_idxs
+
+        return {
+            "market": member_idxs,
+            "low": low,
+            "medium": medium,
+            "high": high,
+        }
+
+    # -------------------------
+    # Train
     # -------------------------
     def train(
         self,
@@ -286,74 +297,78 @@ class SemanticClusterizer:
         merge_threshold: float = 0.80,
         split_threshold: float = 0.45,
     ) -> List[List[int]]:
-        """
-        Append `pairs` to dataset and recompute clusters.
-        Returns computed clusters (lists of indices).
-        """
-        # append data
         self.add_pairs(pairs)
-
-        # ensure embeddings are present
         self._ensure_embeddings_cache(batch_size=batch_size)
 
         if method == "threshold":
             if threshold is None:
-                threshold = self.auto_threshold_search(steps=auto_search_steps, batch_size=batch_size)
-            clusters, centroids = self._cluster_threshold(self.sentences, threshold=threshold, batch_size=batch_size)
+                threshold = self.auto_threshold_search(
+                    steps=auto_search_steps, batch_size=batch_size
+                )
+            clusters, centroids = self._cluster_threshold(
+                self.sentences, threshold=threshold, batch_size=batch_size
+            )
             self.method = "threshold"
             self.threshold = threshold
+
         elif method == "dbscan":
-            clusters, centroids = self._cluster_dbscan(self.sentences, eps=dbscan_eps, batch_size=batch_size)
+            clusters, centroids = self._cluster_dbscan(
+                self.sentences, eps=dbscan_eps, batch_size=batch_size
+            )
             self.method = "dbscan"
             self.threshold = None
+
         else:
             raise ValueError("method must be 'threshold' or 'dbscan'")
 
-        # store clusters/centroids as indices into self.sentences
         self.clusters = clusters
         self.centroids = centroids
 
-        # merge / split postprocessing
         self._merge_clusters(merge_threshold=merge_threshold)
         self._split_clusters(split_threshold=split_threshold, batch_size=batch_size)
+
+        # compute quartiles
+        self.quartile_groups = [
+            self._compute_quartile_groups_for_cluster(c)
+            for c in self.clusters
+        ]
 
         return self.clusters
 
     # -------------------------
-    # Prediction (weighted KNN inside cluster)
+    # Prediction utilities
     # -------------------------
-    @staticmethod
-    def _cosine_distance_from_sim(sim: float) -> float:
-        """Distance in [0, 2] derived from cosine similarity in [-1,1]. We use 1 - sim."""
-        return float(max(0.0, 1.0 - sim))
-
     def _choose_cluster_for_emb(self, emb: torch.Tensor) -> int:
         if not self.centroids:
             raise RuntimeError("No clusters available. Call train() first.")
         sims = [util.cos_sim(emb, c).item() for c in self.centroids]
         return int(np.argmax(sims))
 
+    # -------------------------
+    # Predict single
+    # -------------------------
     def predict(
         self,
         sentence: str,
         k: Optional[int] = None,
         batch_size: int = 64,
         epsilon: float = 1e-6,
+        brand_level: Literal["market", "low", "medium", "high"] = "market",
     ) -> Dict[str, Any]:
-        """
-        Predict numeric target for a single sentence.
-        Returns dict: {"prediction": float, "confidence": float, "closest": str}
-        """
+        if brand_level not in ("market", "low", "medium", "high"):
+            raise ValueError("brand_level must be 'market', 'low', 'medium', 'high'")
+
         emb = self._embed([sentence], batch_size=batch_size)[0]
         cluster_idx = self._choose_cluster_for_emb(emb)
-        member_idxs = self.clusters[cluster_idx]
+
+        # quartile-filtered members
+        member_idxs = self.quartile_groups[cluster_idx][brand_level]
+
         member_embs = self._ensure_embeddings_cache(batch_size=batch_size)[member_idxs]
         member_targets = self.targets[np.array(member_idxs)]
 
         sims = util.cos_sim(emb, member_embs).cpu().numpy().flatten()
-        dists = 1.0 - sims  # cosine distance
-
-        # weights = 1/(distance + eps)
+        dists = 1.0 - sims
         weights = 1.0 / (dists + epsilon)
 
         if k is not None:
@@ -363,40 +378,39 @@ class SemanticClusterizer:
             pred = float(np.sum(weights_k * targets_k) / np.sum(weights_k))
             confidence = float(np.mean(sims[top]))
             closest = self.sentences[member_idxs[int(top[0])]]
-            return {"prediction": pred, "confidence": confidence, "closest": closest}
         else:
             pred = float(np.sum(weights * member_targets) / np.sum(weights))
             confidence = float(np.mean(sims))
-            closest_idx = int(np.argmax(sims))
-            closest = self.sentences[member_idxs[closest_idx]]
-            return {"prediction": pred, "confidence": confidence, "closest": closest}
+            closest = self.sentences[member_idxs[int(np.argmax(sims))]]
 
+        return {"prediction": pred, "confidence": confidence, "closest": closest}
+
+    # -------------------------
+    # Predict batch
+    # -------------------------
     def predict_batch(
         self,
         sentences: List[str],
         k: Optional[int] = None,
         batch_size: int = 64,
         epsilon: float = 1e-6,
+        brand_level: Literal["market", "low", "medium", "high"] = "market",
     ) -> List[Dict[str, Any]]:
-        """
-        Batch prediction returning list of dicts with keys:
-        - prediction: float
-        - confidence: float (mean similarity to used neighbors)
-        - closest: str
-        """
-        embs = self._embed(sentences, batch_size=batch_size)
-        results: List[Dict[str, Any]] = []
+        if brand_level not in ("market", "low", "medium", "high"):
+            raise ValueError("brand_level must be 'market', 'low', 'medium', 'high'")
 
-        # precompute member embeddings by cluster (cache)
-        cluster_member_embs = [self._ensure_embeddings_cache(batch_size=batch_size)[c] for c in self.clusters]
-        cluster_member_idxs = [c for c in self.clusters]
+        embs = self._embed(sentences, batch_size=batch_size)
+        results = []
+
+        cache = self._ensure_embeddings_cache(batch_size=batch_size)
 
         for emb in embs:
-            # choose best cluster by centroid similarity
-            centroid_sims = [util.cos_sim(emb, c).item() for c in self.centroids]
-            best_cluster = int(np.argmax(centroid_sims))
-            member_idxs = cluster_member_idxs[best_cluster]
-            member_embs = cluster_member_embs[best_cluster]
+            # choose cluster
+            sims_to_centroids = [util.cos_sim(emb, c).item() for c in self.centroids]
+            cluster_idx = int(np.argmax(sims_to_centroids))
+
+            member_idxs = self.quartile_groups[cluster_idx][brand_level]
+            member_embs = cache[member_idxs]
             member_targets = self.targets[np.array(member_idxs)]
 
             sims = util.cos_sim(emb, member_embs).cpu().numpy().flatten()
@@ -415,30 +429,35 @@ class SemanticClusterizer:
                 conf = float(np.mean(sims))
                 closest = self.sentences[member_idxs[int(np.argmax(sims))]]
 
-            results.append({"prediction": pred, "confidence": conf, "closest": closest})
+            results.append({
+                "prediction": pred,
+                "confidence": conf,
+                "closest": closest
+            })
 
         return results
 
     # -------------------------
-    # Incremental centroid updates
+    # Incremental update
     # -------------------------
     def incrementally_add_pairs_and_update(
         self,
         pairs: List[Tuple[str, float]],
         batch_size: int = 64,
     ) -> None:
-        """
-        Adds pairs to dataset and updates centroids incrementally for clusters where new
-        points have been added (simple approach: re-run train for small datasets recommended).
-        """
-        start_len = len(self.sentences)
         self.add_pairs(pairs)
-        # recompute embeddings cache
         self._ensure_embeddings_cache(batch_size=batch_size)
-        # naive: recompute centroids fully for each cluster
+
+        # recompute centroids
         for cid, c in enumerate(self.clusters):
-            embs = self._ensure_embeddings_cache(batch_size=batch_size)[c]
+            embs = self._ensure_embeddings_cache()[c]
             self.centroids[cid] = embs.mean(dim=0)
+
+        # recompute quartile groups
+        self.quartile_groups = [
+            self._compute_quartile_groups_for_cluster(c)
+            for c in self.clusters
+        ]
 
     # -------------------------
     # Save / Load
@@ -461,11 +480,17 @@ class SemanticClusterizer:
         with open(p / "clusters.pkl", "wb") as f:
             pickle.dump(self.clusters, f)
 
-        # centroids
         torch.save(self.centroids, p / "centroids.pt")
 
         with open(p / "dataset.pkl", "wb") as f:
-            pickle.dump({"sentences": self.sentences, "targets": self.targets.tolist()}, f)
+            pickle.dump(
+                {"sentences": self.sentences, "targets": self.targets.tolist()},
+                f,
+            )
+
+        # Save quartile groups
+        with open(p / "quartile_groups.pkl", "wb") as f:
+            pickle.dump(self.quartile_groups, f)
 
     @classmethod
     def load(cls, path: str) -> "SemanticClusterizer":
@@ -473,7 +498,11 @@ class SemanticClusterizer:
         with open(p / "metadata.json", "r", encoding="utf-8") as f:
             meta = json.load(f)
 
-        obj = cls(model_name=meta.get("model_name", "sentence-transformers/LaBSE"), device=meta.get("device", None), target_name=meta.get("target_name", "target"))
+        obj = cls(
+            model_name=meta.get("model_name", "sentence-transformers/LaBSE"),
+            device=meta.get("device", None),
+            target_name=meta.get("target_name", "target"),
+        )
         obj.method = meta.get("method", None)
         obj.threshold = meta.get("threshold", None)
 
@@ -487,7 +516,20 @@ class SemanticClusterizer:
             obj.sentences = ds["sentences"]
             obj.targets = np.array(ds["targets"], dtype=float)
 
-        # precompute embeddings cache
+        # Load quartile groups
+        quartile_file = p / "quartile_groups.pkl"
+        if quartile_file.exists():
+            with open(quartile_file, "rb") as f:
+                obj.quartile_groups = pickle.load(f)
+        else:
+            # recompute if needed
+            obj._embeddings_cache = None
+            obj._ensure_embeddings_cache()
+            obj.quartile_groups = [
+                obj._compute_quartile_groups_for_cluster(c)
+                for c in obj.clusters
+            ]
+
         obj._embeddings_cache = None
         obj._ensure_embeddings_cache()
         return obj

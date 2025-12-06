@@ -1,0 +1,21 @@
+{% extends "myapp/RoosAI/base.html" %}
+{% block content %}
+
+<h1>Choose Import Method</h1>
+
+<form action="{% url 'import-from-pc' %}" method="post" enctype="multipart/form-data">
+    {% csrf_token %}
+    <input type="file" name="file" accept=".csv,.xlsx,.pdf" required>
+    <button type="submit">Import from PC</button>
+</form>
+
+<!-- This button loads the modal via HTMX -->
+<button hx-get="{% url 'platform-list' %}" hx-target="#modal" hx-swap="innerHTML">
+    Import from Platform
+</button>
+
+<form action="{% url 'blank-page' %}" method="get">
+    <button type="submit">Blank page</button>
+</form>
+
+{% endblock %}

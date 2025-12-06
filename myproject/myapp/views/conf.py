@@ -8,3 +8,12 @@ from supabase import create_client
 from django.conf import settings
 from django.utils import timezone
 from io import BytesIO
+import os
+#import backends
+#from backends import (
+#    quotes, quoteMapping, quotationEngine, quoteClustering, dataLoader
+#)
+import pandas as pd
+import io
+import pdfplumber
+from django.core.files.uploadedfile import UploadedFile

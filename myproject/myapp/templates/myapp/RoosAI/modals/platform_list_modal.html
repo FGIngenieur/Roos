@@ -1,0 +1,37 @@
+<div class="modal-overlay" 
+     _="on click if event.target.matches('.modal-overlay') then remove #modal’s innerHTML">
+
+    <div class="modal-box">
+        <h2>Supabase Platform Files</h2>
+
+        <table border="1" width="100%">
+            <tr>
+                <th>File Name</th>
+                <th>Created</th>
+                <th></th>
+            </tr>
+
+            {% for i in items %}
+            <tr>
+                <td>{{ i.file_name }}</td>
+                <td>{{ i.created_at }}</td>
+                <td>
+                    <button 
+                        hx-get="{% url 'import-from-platform' i.id %}"
+                        hx-target="#modal"
+                        hx-swap="innerHTML">
+                        Import
+                    </button>
+                </td>
+            </tr>
+            {% endfor %}
+        </table>
+
+        <div style="margin-top: 1rem;">
+            <button 
+                _="on click remove #modal’s innerHTML">
+                Close
+            </button>
+        </div>
+    </div>
+</div>
