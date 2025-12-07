@@ -1,26 +1,7 @@
-from django.shortcuts import render, redirect
-from django.contrib.auth import authenticate, login, logout
-from django.contrib.auth.decorators import login_required
-from django.http import FileResponse, HttpResponseForbidden, HttpResponse
-from django.contrib.auth.decorators import login_required
-from django.http import JsonResponse
-from supabase import create_client
-from django.conf import settings
-from django.utils import timezone
-from io import BytesIO
-import os
-#import backends
-#from backends import (
-#    quotes, quoteMapping, quotationEngine, quoteClustering, dataLoader
-#)
-import pandas as pd
-import io
-import pdfplumber
-from django.core.files.uploadedfile import UploadedFile
+from .conf import *
+from .libs import *
+from .supabase_views import get_supabase
 
-bucket = "dev-kev"
-quote_input_folder = "quotesImported"
-quote_output_folder = "quotesCreated"
 
 def import_home(request):
     return render(request, "myapp/RoosAI/import_home.html")
@@ -53,18 +34,17 @@ def import_from_pc(request):
 
 
 def platform_list(request):
-    supabase = create_client(settings.SUPABASE_URL, settings.SUPABASE_KEY)
-    response = supabase.table("quotesTable").select("*").execute()
+    client = get_supabase()
+    response = client.table("quotesTable").select("*").execute()
     items = response.data
 
     return render(request, "myapp/RoosAI/modals/platform_list_modal.html", {"items": items})
 
-from django.http import HttpResponse
 
 def import_from_platform(request, item_id):
-    supabase = create_client(settings.SUPABASE_URL, settings.SUPABASE_KEY)
-    row = supabase.table("quotesTable").select("*").eq("id", item_id).single().execute().data
-    file_bytes = supabase.storage.from_(row[bucket]).download(row["file_path"])
+    client = get_supabase()
+    row = client.table("quotesTable").select("*").eq("id", item_id).single().execute().data
+    file_bytes = client.storage.from_(row["bucket"]).download(row["file_path"])
 
     name = row["file_name"].lower()
 
@@ -80,9 +60,9 @@ def import_from_platform(request, item_id):
     request.session["input_data"] = df.to_json(orient="records")
 
     # HTMX-friendly response:
-    return HttpResponse("""
+    return HttpResponse(f"""
         <script>
-            window.location.href = 'RoosAI/editor/';
+            window.location.href = '/RoosAI/editor/';
         </script>
     """)
 

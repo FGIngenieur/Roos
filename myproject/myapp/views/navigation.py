@@ -1,22 +1,6 @@
-from django.shortcuts import render, redirect
-from django.contrib.auth import authenticate, login, logout
-from django.contrib.auth.decorators import login_required
-from django.http import FileResponse, HttpResponseForbidden, HttpResponse
-from django.contrib.auth.decorators import login_required
-from django.http import JsonResponse
-from supabase import create_client
-from django.conf import settings
-from django.utils import timezone
-from io import BytesIO
-import os
-#import backends
-#from backends import (
-#    quotes, quoteMapping, quotationEngine, quoteClustering, dataLoader
-#)
-import pandas as pd
-import io
-import pdfplumber
-from django.core.files.uploadedfile import UploadedFile
+from .conf import *
+from .libs import *
+from .supabase_views import get_supabase
 
 if settings.DEV_FLAG:
     user_id = int(settings.USER_ID)
@@ -133,8 +117,8 @@ def record_engine (
 def list_files(request, table = "quotesTable", user_id = user_id):
     try:
         # Fetch all rows from uploaded_files
-        supabase = create_client(settings.SUPABASE_URL, settings.SUPABASE_KEY)
-        response = supabase.table(table).select("*").eq("author_id", user_id).execute()
+        client = get_supabase()
+        response = client.table(table).select("*").eq("author_id", user_id).execute()
         data = response.data  # ✅ the returned rows
 
         # Check if data is None or empty
@@ -163,7 +147,7 @@ def quote_detail(request, quote_id, client, user_id):
     return render(request, f"myapp/RoosAI/quote_detail.html", {"quote": quote})
 
 
-@login_required(login_url='/login/')
+
 def roos_ai(request, tab = 'main'):
     if tab == 'main':
         return render(request, f'myapp/RoosAI/{tab}.html')
@@ -177,14 +161,9 @@ def roos_ai(request, tab = 'main'):
             if not (uploaded_file.name.endswith('.csv') or uploaded_file.name.endswith('.xlsx')):
                 return render(request, 'myapp/RoosAI/editing.html', {'text': 'Only .csv and .xlsx files allowed!'})
             
-            supabase = create_client(settings.SUPABASE_URL, settings.SUPABASE_KEY)
-            bucket = settings.SUPABASE_STORAGE_BUCKET
-
-            # Upload file to Supabase Storage
-            #res = supabase.storage.from_(bucket).upload(uploaded_file.name, uploaded_file.read(), {"upsert": True})
-            #print(f"This is status code : {res.status_code}")
+            client = get_supabase()
             
-            record_file_upload(uploaded_file.name, supabase)
+            record_file_upload(uploaded_file.name, client)
                 
             #else:
               #  print("Storage upload failed:", res.data)
@@ -199,16 +178,8 @@ def roos_ai(request, tab = 'main'):
         "SUPABASE_STORAGE_BUCKET" : settings.SUPABASE_STORAGE_BUCKET,
     })
     elif tab == 'search':
-        supabase = create_client(settings.SUPABASE_URL, settings.SUPABASE_KEY)
-        quotes_list(request, tab, supabase)
-    
-    elif tab == 'create-project':
-        if request.method == 'POST':
-            supabase = create_client(settings.SUPABASE_URL, settings.SUPABASE_KEY)
-            project_name = request.POST.get('project_name')
-            bucket = settings.SUPABASE_STORAGE_BUCKET
-            record_project(project_name, supabase, bucket=bucket,engine_id=engine_id)
-            return render(request, )
+        client = get_supabase()
+        quotes_list(request, tab, client)
 
         
 

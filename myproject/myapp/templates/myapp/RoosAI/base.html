@@ -1,12 +1,13 @@
-<!DOCTYPE html>
 {% load static %}
+<!DOCTYPE html>
 <html lang="fr">
 <head>
     <title>{% block title %}Importer{% endblock %}</title>
-    <script src="https://unpkg.com/htmx.org"></script>
-    <script src="https://unpkg.com/hyperscript.org"></script>
     <link rel="stylesheet" href="{% static 'myapp/css/sidebar.css' %}">
     <link href="https://unpkg.com/lucide-static@latest/font/lucide.css" rel="stylesheet">
+    <script src="https://unpkg.com/htmx.org"></script>
+    <script src="https://unpkg.com/hyperscript.org"></script>
+    
 <style>
 .btn {
   background-color: #007bff;
@@ -22,6 +23,7 @@
 </style>
 <body>
     {% include 'myapp/Common/menu.html' %}
+    {% include 'myapp/Common/changeTheme.html' %}
 
     <style>
         .modal-overlay {

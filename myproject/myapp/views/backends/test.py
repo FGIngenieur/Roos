@@ -112,7 +112,7 @@ def main():
         "Je prépare des spaghetti.",
         "Le chat se repose tranquillement.",
     ]
-    batch_results = sc.predict_batch(batch_sentences)
+    batch_results = sc.predict_batch(batch_sentences, brand_level="high")
 
     for sent, res in zip(batch_sentences, batch_results):
         print("\nSentence:", sent)

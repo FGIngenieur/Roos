@@ -3,32 +3,110 @@
 
 <h1>Imported Data</h1>
 
-{% if rows|length == 0 %}
-    <p>No data. Blank page.</p>
-{% else %}
-
-<div style="display:flex; flex-direction:column; gap:1rem;">
-    {% for row in rows %}
-    <div style="border:1px solid #ccc; padding:1rem; border-radius:20px;">
-        {% for key, value in row.items %}
-            <strong>{{ key }}:</strong> {{ value }} <br>
+<table id="data-table" border="1" cellpadding="5" cellspacing="0" style="border-collapse:collapse; width:100%;">
+    <thead>
+        <tr>
+            <th>Description</th>
+            <th>Unit Price</th>
+            <th>Quantity</th>
+            <th>Total Price</th>
+            <th>Unit</th>
+            <th>Actions</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for row in rows %}
+        <tr>
+            <td><input type="text" class="desc" value="{{ row.Description }}"></td>
+            <td><input type="number" class="unit_price" value="{{ row.Unit_price }}" step="0.01"></td>
+            <td><input type="number" class="quantity" value="{{ row.Quantity }}" step="0.01"></td>
+            <td><input type="number" class="total_price" value="{{ row.Total_price }}" step="0.01" readonly></td>
+            <td>
+                <select class="unit">
+                    <option value="m2" {% if row.Unit == "m2" %}selected{% endif %}>m2</option>
+                    <option value="m3" {% if row.Unit == "m3" %}selected{% endif %}>m3</option>
+                    <option value="kgs" {% if row.Unit == "kgs" %}selected{% endif %}>kgs</option>
+                    <option value="room" {% if row.Unit == "room" %}selected{% endif %}>room</option>
+                </select>
+            </td>
+            <td>
+                <button class="remove-btn">Remove</button>
+            </td>
+        </tr>
         {% endfor %}
-    </div>
-    {% endfor %}
+    </tbody>
+</table>
+
+<div style="margin-top:10px;">
+    <button id="add-row-btn">Add a new entry</button>
+    <button id="undo-btn" disabled>Undo Delete</button>
 </div>
 
-<div style="margin-top:20px;">
-    {% if has_prev %}
-        <a href="?page={{ page|add:"-1" }}">⬅ Prev</a>
-    {% endif %}
+<script>
+    const table = document.getElementById("data-table").getElementsByTagName("tbody")[0];
+    let deletedRows = [];
 
-    <span style="margin:0 10px;">Page {{ page }}</span>
+    function updateTotal(row) {
+        const unitPrice = parseFloat(row.querySelector(".unit_price").value) || 0;
+        const quantity = parseFloat(row.querySelector(".quantity").value) || 0;
+        row.querySelector(".total_price").value = (unitPrice * quantity).toFixed(2);
+    }
 
-    {% if has_next %}
-        <a href="?page={{ page|add:"1" }}">Next ➡</a>
-    {% endif %}
-</div>
+    // Initial calculation
+    table.querySelectorAll("tr").forEach(row => {
+        updateTotal(row);
+    });
 
-{% endif %}
+    // Auto recalc on change
+    table.addEventListener("input", e => {
+        const row = e.target.closest("tr");
+        if(row && (e.target.classList.contains("unit_price") || e.target.classList.contains("quantity"))) {
+            updateTotal(row);
+        }
+    });
+
+    // Remove row
+    table.addEventListener("click", e => {
+        if(e.target.classList.contains("remove-btn")) {
+            const row = e.target.closest("tr");
+            deletedRows.push(row.cloneNode(true));
+            row.remove();
+            document.getElementById("undo-btn").disabled = false;
+        }
+    });
+
+    // Undo delete
+    document.getElementById("undo-btn").addEventListener("click", () => {
+        if(deletedRows.length > 0) {
+            const restored = deletedRows.pop();
+            table.appendChild(restored);
+            updateTotal(restored);
+        }
+        if(deletedRows.length === 0) {
+            document.getElementById("undo-btn").disabled = true;
+        }
+    });
+
+    // Add new row
+    document.getElementById("add-row-btn").addEventListener("click", () => {
+        const newRow = document.createElement("tr");
+        newRow.innerHTML = `
+            <td><input type="text" class="desc" value=""></td>
+            <td><input type="number" class="unit_price" value="" step="0.01"></td>
+            <td><input type="number" class="quantity" value="" step="0.01"></td>
+            <td><input type="number" class="total_price" value="" step="0.01" readonly></td>
+            <td>
+                <select class="unit">
+                    <option value="m2">m2</option>
+                    <option value="m3">m3</option>
+                    <option value="kgs">kgs</option>
+                    <option value="room">room</option>
+                </select>
+            </td>
+            <td><button class="remove-btn">Remove</button></td>
+        `;
+        table.appendChild(newRow);
+    });
+</script>
 
 {% endblock %}
